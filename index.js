@@ -1,6 +1,7 @@
 const { Client, Intents, MessageButton, IntentsBitField, NoSubscriberBehavior, DiscordAPIError, MessageSelectMenu, MessageAttachment, MessageEmbed, MessageActionRow } = require('discord.js');
 const { loadImage, Canvas} = require("canvas-constructor/cairo")
 const { version } = require("discord.js")
+const rules = require('./rules.json');
 const Keyv = require('keyv');
 const { inviteTracker } = require("discord-inviter");
 const fs = require('fs');
@@ -145,7 +146,34 @@ client.on('messageCreate', message => {
 
 let nextAzkarIndex = 0;
 
+client.on('messageCreate', async message => {
+  if (message.content === 'st!r3rules') {
+    if (message.member.permissions.has("ADMINISTRATOR")) {
+      const row = new MessageActionRow()
+        .addComponents(
+          new MessageSelectMenu()
+            .setCustomId('select')
+            .setPlaceholder('List of Laws')
+            .addOptions(rules.map(rule => ({
+              label: rule.title,
+              description: rule.id,
+              value: rule.id,
+            }))),
+        );
 
+      const embed = new MessageEmbed()
+        .setThumbnail(message.guild.iconURL({ dynamic: true, size: 4096 }))
+        .setTitle("<a:3_:1089615585232556204> Server Rules Community <a:12:1150947511146664017>")
+        .setDescription(`<a:11:1150943009442107523> to read the laws, choose from the list below \n<a:11:1150943009442107523> please do not violate server rules \n\n <:921703781027184660:1089615608154431579> **Developer BOT <@803873969168973855> <:911751899324239902:1089615602471141416>**`)
+        .setImage('https://cdn.discordapp.com/attachments/1223781002997141534/1223783415892021289/standard.gif?ex=662a455f&is=6628f3df&hm=8c295d1e10259cb2dd7c69bfa28ae0d663323ede55546d6e065c672f47a1335b&')
+
+      const sentMessage = await message.channel.send({ embeds: [embed], components: [row] });
+      await message.delete();
+    } else {
+      await message.reply({ content: "You need to be an administrator to use this command.", ephemeral: true });
+    }
+  }
+});
 client.on('messageCreate', async message => {
     if (!message.content.startsWith(client.config.prefix) || message.author.bot) return;
 
@@ -365,6 +393,15 @@ client.on('interactionCreate', async interaction => {
 
     const { member, guild } = interaction;
   
+      if (interaction.isSelectMenu()) {
+    const rule = rules.find(r => r.id === interaction.values[0]);
+    const text = fs.readFileSync(rule.description, 'utf-8');
+    const ruleEmbed = new MessageEmbed()
+      .setTitle(rule.title)
+      .setDescription(text)
+
+    await interaction.reply({ embeds: [ruleEmbed], ephemeral: true });
+  }
   
     // استدعاء الدالة المناسبة بناءً على customId
     switch (interaction.customId) {
